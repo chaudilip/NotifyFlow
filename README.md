@@ -1,159 +1,267 @@
-# Turborepo starter
+# NotifyFlow
 
-This Turborepo starter is maintained by the Turborepo core team.
+> Multi-tenant notification delivery platform — one API to send emails, SMS, and webhooks with async queuing, automatic retries, and real-time delivery tracking.
 
-## Using this example
+Inspired by [Courier](https://courier.com), [Knock](https://knock.app), and [Novu](https://novu.co). Built to demonstrate production-grade backend architecture.
 
-Run the following command:
+```http
+POST /v1/notify
+x-api-key: nf_live_xxxxxxxxxxxxxxxx
 
-```sh
-npx create-turbo@latest
+{
+  "channel": "email",
+  "to": "user@example.com",
+  "subject": "Your order is confirmed",
+  "body": "Order #1042 has been placed successfully."
+}
 ```
 
-## What's inside?
+---
 
-This Turborepo includes the following packages/apps:
+## What it does
 
-### Apps and Packages
+NotifyFlow lets developers send notifications to their users without building delivery infrastructure from scratch. Sign up, get an API key, call one endpoint — NotifyFlow handles routing, delivery, retries, and full observability.
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+---
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+## Architecture
 
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo build
+```
+Client / Tenant App
+       │
+       ▼
+  API Gateway  (Node.js + TypeScript + Express)
+  ├── API key auth   → Redis cache + PostgreSQL
+  ├── Idempotency    → prevents duplicate sends
+  └── Enqueue        → AWS SQS (FIFO)
+       │
+       ▼
+  Worker Service  (separate Node.js process)
+  ├── Email   → SendGrid
+  ├── SMS     → Twilio
+  └── Webhook → tenant endpoints (HMAC signed)
+       │
+       ▼
+  PostgreSQL  (delivery logs, tenants, retry state)
+       │
+       ▼
+  Dashboard  (Next.js + Socket.IO)
+  └── Real-time delivery status per tenant
 ```
 
-Without global `turbo`, use your package manager:
+---
 
-```sh
-cd my-turborepo
-npx turbo build
-yarn dlx turbo build
-pnpm exec turbo build
+## Key Features
+
+- **Multi-tenant** — isolated API keys, rate limiting, and delivery logs per tenant
+- **Async delivery** — notifications queued in AWS SQS, fully decoupled from the API response
+- **Retry logic** — exponential backoff with dead-letter queue for permanently failed deliveries
+- **Idempotency** — pass an `Idempotency-Key` header and duplicate requests never trigger duplicate sends
+- **Real-time dashboard** — live delivery status updates via WebSockets
+- **Secure API keys** — SHA-256 hashed at rest, shown to the user exactly once, never stored in plaintext
+- **Redis caching** — API key lookups cached for 5 minutes to avoid DB hits on every request
+- **SOC-ready logging** — every delivery attempt logged with status, error message, and timestamp
+
+---
+
+## Tech Stack
+
+| Layer        | Technology                          |
+|--------------|-------------------------------------|
+| API          | Node.js, TypeScript, Express        |
+| Queue        | AWS SQS (FIFO)                      |
+| Database     | PostgreSQL (via Knex.js)            |
+| Cache        | Redis (API key lookup, rate limit)  |
+| Email        | SendGrid                            |
+| SMS          | Twilio                              |
+| Dashboard    | Next.js 16, Tailwind CSS, Socket.IO |
+| Monorepo     | Turborepo + pnpm workspaces         |
+| Infra        | Docker, AWS                         |
+
+---
+
+## Project Structure
+
+```
+notifyflow/
+├── apps/
+│   ├── api/                  # Express API gateway
+│   │   └── src/
+│   │       ├── modules/
+│   │       │   ├── auth/     # JWT + API key auth
+│   │       │   ├── notify/   # Notification send + logs
+│   │       │   ├── tenants/  # Tenant management
+│   │       │   └── webhooks/ # Inbound webhook handling
+│   │       └── shared/
+│   │           ├── db/       # Postgres + Redis clients
+│   │           ├── queue/    # SQS producer
+│   │           └── middleware/
+│   ├── worker/               # SQS consumer + delivery handlers
+│   │   └── src/
+│   │       ├── handlers/     # email, sms, webhook handlers
+│   │       └── retry/        # exponential backoff strategy
+│   └── dashboard/            # Next.js real-time dashboard
+│       └── app/
+│           ├── dashboard/    # delivery logs + stats
+│           └── settings/     # API key management
+└── packages/
+    └── shared-types/         # TypeScript types shared across apps
 ```
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+---
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+## Getting Started
 
-```sh
-turbo build --filter=docs
+### Prerequisites
+
+- Node.js >= 20
+- pnpm >= 9
+- Docker (for Postgres + Redis)
+- AWS account (free tier is enough for SQS)
+
+### Installation
+
+```bash
+# Clone the repo
+git clone https://github.com/chaudilip/notifyflow.git
+cd notifyflow
+
+# Install all dependencies
+pnpm install
+
+# Copy environment variables
+cp .env.example .env
 ```
 
-Without global `turbo`:
+### Environment Variables
 
-```sh
-npx turbo build --filter=docs
-yarn exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
+```env
+# Database
+DATABASE_URL=postgresql://postgres:password@localhost:5432/notifyflow
+
+# Redis
+REDIS_URL=redis://localhost:6379
+
+# Auth
+JWT_SECRET=your_super_secret_jwt_key
+
+# AWS
+AWS_REGION=ap-south-1
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+SQS_QUEUE_URL=https://sqs.ap-south-1.amazonaws.com/your-account-id/notifyflow.fifo
+
+# Email
+SENDGRID_API_KEY=your_sendgrid_key
+
+# SMS
+TWILIO_ACCOUNT_SID=your_twilio_sid
+TWILIO_AUTH_TOKEN=your_twilio_token
 ```
 
-### Develop
+### Start Services
 
-To develop all apps and packages, run the following command:
+```bash
+# Start Postgres + Redis via Docker
+docker-compose up -d
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+# Run database migrations
+pnpm --filter @notifyflow/api run migrate
 
-```sh
-cd my-turborepo
-turbo dev
+# Start all apps in parallel
+pnpm dev
 ```
 
-Without global `turbo`, use your package manager:
+This starts:
+- API on `http://localhost:3001`
+- Dashboard on `http://localhost:3000`
+- Worker polling SQS in the background
+- Shared types compiling in watch mode
 
-```sh
-cd my-turborepo
-npx turbo dev
-yarn exec turbo dev
-pnpm exec turbo dev
+---
+
+## API Reference
+
+### Auth
+
+| Method | Endpoint             | Description           |
+|--------|----------------------|-----------------------|
+| POST   | `/auth/register`     | Create tenant account |
+| POST   | `/auth/login`        | Get JWT token         |
+| POST   | `/auth/rotate-key`   | Rotate API key        |
+
+### Notifications
+
+| Method | Endpoint            | Auth    | Description              |
+|--------|---------------------|---------|--------------------------|
+| POST   | `/v1/notify`        | API key | Send a notification      |
+| GET    | `/v1/notify/logs`   | API key | List delivery logs       |
+| GET    | `/v1/notify/:id`    | API key | Get delivery detail      |
+
+### Channels
+
+```json
+{ "channel": "email",   "to": "user@example.com", "subject": "Hello", "body": "..." }
+{ "channel": "sms",     "to": "+919876543210",     "body": "Your OTP is 123456" }
+{ "channel": "webhook", "to": "https://your.app/webhooks", "body": "{\"event\": \"order.placed\"}" }
 ```
 
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+### Idempotency
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+Pass `Idempotency-Key: <unique-string>` header to prevent duplicate sends on network retries. Safe to retry indefinitely — the same notification will never be sent twice.
 
-```sh
-turbo dev --filter=web
+```http
+POST /v1/notify
+x-api-key: nf_live_xxxx
+Idempotency-Key: order-1042-confirmation
+
+{ "channel": "email", ... }
 ```
 
-Without global `turbo`:
+---
 
-```sh
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
+## Database Schema
+
+```
+tenants          → one row per customer account
+api_keys         → hashed keys linked to a tenant
+notifications    → one row per send request (status: queued → delivered / failed)
+delivery_attempts→ one row per attempt (tracks retries + error messages)
+webhook_endpoints→ outbound webhook URLs registered by tenants
 ```
 
-### Remote Caching
+---
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
+## Retry Logic
 
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
+Failed deliveries are retried with exponential backoff:
 
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
+```
+Attempt 1 → immediate
+Attempt 2 → 30 seconds
+Attempt 3 → 5 minutes
+Attempt 4 → 30 minutes
+Attempt 5 → dead-letter queue (status: dead)
 ```
 
-Without global `turbo`, use your package manager:
+Dead-letter notifications are visible in the dashboard and can be manually retried.
 
-```sh
-cd my-turborepo
-npx turbo login
-yarn exec turbo login
-pnpm exec turbo login
-```
+---
 
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
+## API Key Security
 
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
+- Keys are generated as `nf_live_[48 random hex chars]`
+- Only the SHA-256 hash is stored in the database
+- The raw key is shown **once** on creation and never again
+- Redis caches validated keys for 5 minutes to reduce DB load
+- Keys can be rotated any time from the dashboard or `POST /auth/rotate-key`
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+---
 
-```sh
-turbo link
-```
+## License
 
-Without global `turbo`:
+MIT
 
-```sh
-npx turbo link
-yarn exec turbo link
-pnpm exec turbo link
-```
+---
 
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+Built by [Dilip Chau](https://github.com/chaudilip)
