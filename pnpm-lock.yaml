@@ -27,6 +27,12 @@ importers:
       '@aws-sdk/client-sqs':
         specifier: ^3.1009.0
         version: 3.1009.0
+      '@notifyflow/api-utils':
+        specifier: workspace:*
+        version: link:../../packages/api-utils
+      '@notifyflow/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       '@notifyflow/env':
         specifier: workspace:*
         version: link:../../packages/env
@@ -163,6 +169,25 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  packages/api-utils:
+    dependencies:
+      '@notifyflow/shared-types':
+        specifier: workspace:*
+        version: link:../shared-types
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+    devDependencies:
+      '@types/express':
+        specifier: ^4.17.0
+        version: 4.17.25
+      express:
+        specifier: ^4.18.0
+        version: 4.22.1
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
   packages/database:
     dependencies:
       '@notifyflow/env':
@@ -178,6 +203,9 @@ importers:
         specifier: ^8.11.0
         version: 8.20.0
     devDependencies:
+      '@types/node':
+        specifier: ^20
+        version: 20.19.37
       '@types/pg':
         specifier: ^8.18.0
         version: 8.18.0
@@ -208,6 +236,10 @@ importers:
         version: 5.9.3
 
   packages/shared-types:
+    dependencies:
+      http-status-codes:
+        specifier: ^2.3.0
+        version: 2.3.0
     devDependencies:
       typescript:
         specifier: ^5.9.3
