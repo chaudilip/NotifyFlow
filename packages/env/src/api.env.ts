@@ -7,6 +7,9 @@ export const apiEnv = createEnv({
     SENDGRID_API_KEY: z.string().min(1),
     TWILIO_ACCOUNT_SID: z.string().min(1),
     TWILIO_AUTH_TOKEN: z.string().min(1),
+    DATABASE_URL: z.string().min(1).default(""),
+    JWT_SECRET: z.string().min(1),
+    NODE_ENV: z.string().min(1).default("development")
   },
   runtimeEnv: process.env,
 })
