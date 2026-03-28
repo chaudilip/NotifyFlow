@@ -40,6 +40,7 @@ export interface NotificationPayload {
   idempotencyKey?: string;
 }
 
+// Auth-Service
 export type NotificationStatus =
   | "queued"
   | "processing"

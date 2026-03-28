@@ -28,7 +28,7 @@ export class BadRequestError extends AppError {
 }
 
 export class UnauthorizedError extends AppError {
-  constructor(message = HttpMessage.UNAUTHORIZED) {
+  constructor(message: string = HttpMessage.UNAUTHORIZED) {
     super(message, StatusCodes.UNAUTHORIZED);
     this.name = "UnauthorizedError";
   }

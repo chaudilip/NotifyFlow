@@ -4,6 +4,7 @@
     "module": "CommonJS",
     "declaration": true,
     "outDir": "./dist",
+    "types": ["express"],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true
