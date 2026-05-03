@@ -1,4 +1,5 @@
 import { Kafka, logLevel } from "kafkajs"
+import { kafkaEnv } from "@notifyflow/env"
 
 const globalForKafka = globalThis as unknown as {
   kafka: Kafka | undefined;
@@ -6,7 +7,7 @@ const globalForKafka = globalThis as unknown as {
 
 export const kafka = globalForKafka.kafka ?? new Kafka({
   clientId: "notifyflow",
-  brokers: [process.env.KAFKA_BROKER || "localhost:9092"],
+  brokers: [kafkaEnv.KAFKA_BROKER],
   logLevel: logLevel.WARN,
 })
 

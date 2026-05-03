@@ -1,1 +1,8 @@
-export * from "./client"
+import './loadEnv'
+export { kafka } from './client'
+export { publishNotification, disconnectProducer } from './producer'
+export { createConsumer } from './consumer'
+export { ensureTopics, disconnectAdmin } from './admin'
+export { KafkaTopic } from './topics'
+export type { NotificationMessage } from './producer'
+export type { KafkaTopicType } from './topics'

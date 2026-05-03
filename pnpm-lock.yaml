@@ -15,6 +15,9 @@ importers:
       prettier:
         specifier: ^3.7.4
         version: 3.8.1
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
       turbo:
         specifier: ^2.8.17
         version: 2.8.17
@@ -158,10 +161,19 @@ importers:
 
   apps/kafka:
     dependencies:
+      '@notifyflow/env':
+        specifier: workspace:*
+        version: link:../../packages/env
+      dotenv:
+        specifier: ^17.3.1
+        version: 17.3.1
       kafkajs:
         specifier: ^2.2.4
         version: 2.2.4
     devDependencies:
+      '@types/node':
+        specifier: ^20
+        version: 20.19.37
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
